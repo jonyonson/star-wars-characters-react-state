@@ -8,9 +8,77 @@ import CharacterList from './CharacterList';
 import dummyData from './dummy-data';
 
 import './styles.scss';
+import endpoint from './endpoint';
+
+const initialState = {
+  result: null,
+  loading: true,
+  error: null,
+};
+
+const fetchReducer = (state, action) => {
+  if (action.type === 'LOADING') {
+    return {
+      result: null,
+      loading: true,
+      error: null,
+    };
+  }
+
+  if (action.type === 'RESPONSE_COMPLETE') {
+    console.log('response complete');
+    return {
+      result: action.payload.response,
+      loading: false,
+      error: null,
+    };
+  }
+
+  if (action.type === 'ERROR') {
+    return {
+      result: action.payload.response,
+      loading: false,
+      error: action.payload.error,
+    };
+  }
+
+  return state;
+};
+
+const useFetch = (url) => {
+  const [state, dispatch] = React.useReducer(fetchReducer, initialState);
+
+  React.useEffect(() => {
+    dispatch({ type: 'LOADING' });
+
+    const fetchUrl = async () => {
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        dispatch({ type: 'RESPONSE_COMPLETE', payload: { response: data } });
+      } catch (error) {
+        dispatch({ type: 'ERROR', payload: { error } });
+      }
+    };
+
+    fetchUrl();
+
+    // fetch(url)
+    //   .then((response) => response.json())
+    //   .then((response) => {
+    //     dispatch({ type: 'RESPONSE_COMPLETE', payload: { response } });
+    //   })
+    //   .catch((error) => {
+    //     dispatch({ type: 'ERROR', payload: { error } });
+    //   });
+  }, []);
+
+  return [state.result, state.loading, state.error];
+};
 
 const Application = () => {
-  const [characters, setCharacters] = useState(dummyData);
+  const [response, loading, error] = useFetch(endpoint + '/characters');
+  const characters = (response && response.characters) || [];
 
   return (
     <div className="Application">
@@ -19,7 +87,12 @@ const Application = () => {
       </header>
       <main>
         <section className="sidebar">
-          <CharacterList characters={characters} />
+          {loading ? (
+            <p>Loading...</p>
+          ) : (
+            <CharacterList characters={characters} />
+          )}
+          {error && <p className="error">{error.message}</p>}
         </section>
       </main>
     </div>
